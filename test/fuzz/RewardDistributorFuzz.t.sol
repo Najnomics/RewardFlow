@@ -29,13 +29,12 @@ contract RewardDistributorFuzzTest is Test {
         
         distributor.setUserPreferences(preferredChain, claimThreshold, claimFrequency, autoClaimEnabled);
         
-        (
-            uint256 actualPreferredChain,
-            uint256 actualClaimThreshold,
-            uint256 actualClaimFrequency,
-            bool actualAutoClaimEnabled,
-            uint256 lastUpdate
-        ) = distributor.getUserPreferences(address(this));
+        RewardDistributor.UserPreferences memory prefs = distributor.getUserPreferences(address(this));
+        uint256 actualPreferredChain = prefs.preferredChain;
+        uint256 actualClaimThreshold = prefs.claimThreshold;
+        uint256 actualClaimFrequency = prefs.claimFrequency;
+        bool actualAutoClaimEnabled = prefs.autoClaimEnabled;
+        uint256 lastUpdate = prefs.lastUpdate;
         
         assertEq(actualPreferredChain, preferredChain);
         assertEq(actualClaimThreshold, claimThreshold);
@@ -224,13 +223,12 @@ contract RewardDistributorFuzzTest is Test {
             distributor.executeRewardDistribution(users[i], amounts[i], 1);
         }
         
-        (
-            uint256 totalDistributed,
-            uint256 totalRequests,
-            uint256 successfulDistributions,
-            uint256 failedDistributions,
-            uint256 totalFees
-        ) = distributor.getDistributionStats();
+        RewardDistributor.DistributionStats memory stats = distributor.getDistributionStats();
+        uint256 totalDistributed = stats.totalDistributed;
+        uint256 totalRequests = stats.totalRequests;
+        uint256 successfulDistributions = stats.successfulDistributions;
+        uint256 failedDistributions = stats.failedDistributions;
+        uint256 totalFees = stats.totalFees;
         
         assertEq(totalDistributed, totalExpected);
         assertEq(totalRequests, users.length);

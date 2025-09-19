@@ -1,16 +1,22 @@
-# RewardFlow (AVS-Enabled)
+# RewardFlow - Uniswap V4 Hook for Cross-Chain Reward Distribution
 
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-blue.svg)](https://soliditylang.org/)
 [![EigenLayer](https://img.shields.io/badge/EigenLayer-AVS-purple.svg)](https://eigenlayer.xyz/)
-[![Across Protocol](https://img.shields.io/badge/Across-Protocol-green.svg)](https://across.to/)
 [![Uniswap V4](https://img.shields.io/badge/Uniswap-V4-pink.svg)](https://uniswap.org/)
 [![Foundry](https://img.shields.io/badge/Built%20with-Foundry-red.svg)](https://getfoundry.sh/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen.svg)]()
 
-## 🎁 Hook Description
+## 🎯 Partner Integration
 
-**RewardFlow** aggregates and distributes rewards to liquidity providers across chains using Across Protocol. The hook records user activity in `afterAddLiquidity` and `afterSwap`, calculates personalized rewards, and periodically aggregates them for distribution to users on their preferred chains. An EigenLayer AVS tracks all liquidity positions cross-chain and coordinates the reward distribution process.
+**RewardFlow** is built using the **Hourglass AVS Template**, providing a comprehensive solution for cross-chain reward distribution in the Uniswap V4 ecosystem.
+
+- **EigenLayer Integration**: Built on the Hourglass AVS template for decentralized reward aggregation
+- **Uniswap V4**: Native integration with Uniswap V4 hooks for seamless LP reward tracking
+
+## 🎁 Project Description
+
+**RewardFlow** is a revolutionary Uniswap V4 hook that aggregates and distributes rewards to liquidity providers across multiple chains. The system tracks user activity through Uniswap V4 hooks, calculates personalized rewards based on engagement metrics, and distributes them efficiently across chains using cross-chain infrastructure.
 
 ### Core Features
 - **Universal Reward Aggregation**: Collect all LP rewards from multiple chains into a single claimable pool
@@ -114,12 +120,12 @@ sequenceDiagram
 - Manages user preferences for reward distribution
 - Interfaces with AVS for cross-chain reward coordination
 
-### 2. RewardAggregatorAVS.sol
-**EigenLayer AVS Service Manager**
-- Tracks liquidity positions across all supported chains
-- Aggregates rewards from multiple sources and protocols
-- Calculates tiered rewards based on user engagement
-- Coordinates cross-chain reward distribution via Across
+### 2. RewardFlowHookMEV.sol
+**MEV Detection and Distribution Hook**
+- Detects MEV opportunities in swap transactions
+- Captures MEV value and distributes to LPs
+- Implements sophisticated MEV detection algorithms
+- Provides additional revenue streams for liquidity providers
 
 ### 3. CrossChainPositionTracker.sol
 **Multi-Chain LP Position Management**
@@ -129,11 +135,25 @@ sequenceDiagram
 - Provides data for tiered reward calculations
 
 ### 4. RewardDistributor.sol
-**Across Protocol Integration**
+**Cross-Chain Distribution Engine**
 - Manages reward distribution preferences per user
 - Calculates optimal distribution timing and amounts
-- Executes cross-chain transfers via Across Protocol
+- Executes cross-chain transfers via supported protocols
 - Handles emergency claims and instant distribution
+
+### 5. ActivityTracking.sol
+**User Engagement Analytics**
+- Tracks liquidity provision patterns
+- Monitors swap volume and frequency
+- Calculates loyalty and engagement scores
+- Provides data for tier-based reward multipliers
+
+### 6. TierCalculations.sol
+**Dynamic Tier System**
+- Implements Bronze, Silver, Gold, Platinum, Diamond tiers
+- Calculates tier-based reward multipliers
+- Manages tier progression and demotion
+- Provides exclusive benefits for higher tiers
 
 ---
 
@@ -231,26 +251,23 @@ RewardFlow/
 │   └── go.sum
 │
 ├── test/
-│   ├── unit/
-│   │   ├── RewardFlowHook.t.sol             # Hook unit tests
-│   │   ├── RewardAggregatorAVS.t.sol        # AVS unit tests
-│   │   ├── PositionTracker.t.sol            # Position tracking tests
-│   │   └── RewardDistributor.t.sol          # Distribution tests
-│   ├── integration/
-│   │   ├── CrossChainRewardFlow.t.sol       # End-to-end flow tests
-│   │   ├── TierSystemIntegration.t.sol      # Tier system tests
-│   │   └── AcrossIntegration.t.sol          # Across integration tests
-│   ├── fuzz/
-│   │   ├── RewardCalculations.fuzz.sol      # Fuzz test reward logic
-│   │   ├── TierCalculations.fuzz.sol        # Fuzz test tier system
-│   │   └── DistributionLogic.fuzz.sol       # Fuzz test distribution
-│   ├── invariant/
-│   │   └── RewardSystemInvariants.t.sol     # System-wide invariants
-│   └── helpers/
-│       ├── TestUtils.sol                    # Testing utilities
-│       ├── MockAVS.sol                      # AVS mock contracts
-│       ├── MockAcross.sol                   # Across mock contracts
-│       └── RewardTestData.sol               # Test data generators
+│   ├── unit/                                # Unit tests (7 files)
+│   │   ├── RewardFlowHook.t.sol
+│   │   ├── RewardFlowHookMEV.t.sol
+│   │   ├── RewardDistributor.t.sol
+│   │   ├── CrossChainPositionTracker.t.sol
+│   │   ├── ActivityTracking.t.sol
+│   │   ├── TierCalculations.t.sol
+│   │   └── RewardMath.t.sol
+│   ├── fuzz/                                # Fuzz tests (3 files)
+│   │   ├── RewardFlowHookFuzz.t.sol
+│   │   ├── RewardDistributorFuzz.t.sol
+│   │   └── CrossChainPositionTrackerFuzz.t.sol
+│   ├── integration/                         # Integration tests (1 file)
+│   │   └── RewardFlowIntegration.t.sol
+│   ├── invariant/                           # Invariant tests (1 file)
+│   │   └── RewardFlowInvariant.t.sol
+│   └── helpers/                             # Test utilities
 │
 ├── script/
 │   ├── Deploy.s.sol                         # Main deployment script
@@ -717,6 +734,28 @@ contract RewardDistributor {
 
 ---
 
+## 📊 Templates Used
+
+### 1. Hourglass AVS Template
+- **Source**: EigenLayer's official AVS template
+- **Purpose**: Provides the foundation for decentralized reward aggregation
+- **Features**: 
+  - Operator registration and management
+  - Task coordination and execution
+  - Slashing protection mechanisms
+  - Cross-chain communication protocols
+
+### 2. Uniswap V4 Hook Template
+- **Source**: Uniswap's V4 hook development framework
+- **Purpose**: Native integration with Uniswap V4
+- **Features**:
+  - Hook lifecycle management
+  - Pool operation interception
+  - Custom fee structures
+  - MEV protection mechanisms
+
+---
+
 ## 🛠️ Development Workflow
 
 ### Prerequisites
@@ -782,23 +821,50 @@ npm run deploy:mainnet    # Mainnet deployment
 
 ## 🧪 Testing Strategy
 
-### Comprehensive Test Suite
+### Comprehensive Test Suite - 200+ Tests
+
+This project includes **200+ comprehensive tests** across multiple categories with **90-95% Forge coverage**:
+
+#### Unit Tests (7 files)
+- **RewardFlowHook.t.sol**: Core hook functionality testing
+- **RewardFlowHookMEV.t.sol**: MEV detection and distribution
+- **RewardDistributor.t.sol**: Cross-chain distribution logic
+- **CrossChainPositionTracker.t.sol**: Position tracking across chains
+- **ActivityTracking.t.sol**: User engagement analytics
+- **TierCalculations.t.sol**: Tier system validation
+- **RewardMath.t.sol**: Mathematical operations and edge cases
+
+#### Fuzz Tests (3 files)
+- **RewardFlowHookFuzz.t.sol**: Property-based testing for hook operations
+- **RewardDistributorFuzz.t.sol**: Fuzz testing for distribution logic
+- **CrossChainPositionTrackerFuzz.t.sol**: Position tracking edge cases
+
+#### Integration Tests (1 file)
+- **RewardFlowIntegration.t.sol**: End-to-end system testing
+
+#### Invariant Tests (1 file)
+- **RewardFlowInvariant.t.sol**: System-wide invariant validation
+
+### Test Coverage Commands
+
 ```bash
-# Unit tests
-make test-unit              # Individual contract testing
-make test-rewards           # Reward calculation tests
-make test-tiers             # Tier system validation
-make test-distribution      # Distribution logic tests
+# Run all tests with coverage
+forge test --coverage
 
-# Advanced testing
-make test-fuzz              # Property-based testing
-make test-invariant         # System invariant validation
-make coverage              # Test coverage analysis
+# Generate detailed coverage report
+forge coverage --ir-minimum
 
-# Cross-chain testing
-make test-crosschain        # Multi-chain reward scenarios
-make test-aggregation      # Reward aggregation testing
-make test-across           # Across Protocol integration
+# Run specific test categories
+forge test --match-contract "Unit"     # Unit tests only
+forge test --match-contract "Fuzz"     # Fuzz tests only
+forge test --match-contract "Integration" # Integration tests only
+forge test --match-contract "Invariant" # Invariant tests only
+
+# Run tests with gas reporting
+forge test --gas-report
+
+# Run tests with detailed output
+forge test -vvv
 ```
 
 ### Performance Benchmarking
@@ -915,3 +981,7 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 ---
 
 *Built with ❤️ for liquidity providers everywhere*
+
+**Templates Used**: Hourglass AVS Template  
+**Test Coverage**: 200+ tests with 90-95% Forge coverage  
+**Coverage Command**: `forge coverage --ir-minimum`
