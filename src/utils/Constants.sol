@@ -23,7 +23,7 @@ library Constants {
 
     /// @notice Token addresses
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address public constant USDC = 0xA0b86a33E6441b8c4C8C0e4C8b8c4C8C0e4C8b8c;
+    address public constant USDC = 0xA0b86A33e6441B8c4c8c0e4C8b8C4C8c0e4c8B8C;
     address public constant USDT = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
     address public constant DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
 

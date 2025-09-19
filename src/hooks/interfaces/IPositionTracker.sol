@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import {PoolKey} from "@uniswap/v4-core/types/PoolKey.sol";
+import {BalanceDelta} from "@uniswap/v4-core/types/BalanceDelta.sol";
+import {PoolId} from "@uniswap/v4-core/types/PoolId.sol";
 
 /**
  * @title IPositionTracker
@@ -12,7 +13,7 @@ interface IPositionTracker {
     /// @notice Position information
     struct Position {
         address user;
-        address poolId;
+        PoolId poolId;
         uint256 liquidity;
         uint256 timestamp;
         uint256 lastUpdate;
@@ -21,7 +22,7 @@ interface IPositionTracker {
 
     /// @notice Pool information
     struct PoolInfo {
-        address poolId;
+        PoolId poolId;
         address[] lps;
         uint256[] shares;
         uint256 totalLiquidity;
@@ -29,8 +30,8 @@ interface IPositionTracker {
     }
 
     /// @notice Events
-    event PositionUpdated(address indexed user, address indexed poolId, uint256 liquidity);
-    event PoolLPsUpdated(address indexed poolId, address[] lps, uint256[] shares);
+    event PositionUpdated(address indexed user, PoolId indexed poolId, uint256 liquidity);
+    event PoolLPsUpdated(PoolId indexed poolId, address[] lps, uint256[] shares);
 
     /// @notice Update user position
     function updatePosition(
@@ -40,22 +41,22 @@ interface IPositionTracker {
     ) external;
 
     /// @notice Get all LPs for a pool
-    function getPoolLPs(address poolId) external view returns (address[] memory);
+    function getPoolLPs(PoolId poolId) external view returns (address[] memory);
 
     /// @notice Get LP shares for a pool
-    function getPoolShares(address poolId) external view returns (uint256[] memory);
+    function getPoolShares(PoolId poolId) external view returns (uint256[] memory);
 
     /// @notice Get user's position in a pool
-    function getUserPosition(address user, address poolId) external view returns (Position memory);
+    function getUserPosition(address user, PoolId poolId) external view returns (Position memory);
 
     /// @notice Get user's total liquidity across all pools
     function getUserTotalLiquidity(address user) external view returns (uint256);
 
     /// @notice Get pool information
-    function getPoolInfo(address poolId) external view returns (PoolInfo memory);
+    function getPoolInfo(PoolId poolId) external view returns (PoolInfo memory);
 
     /// @notice Check if user is LP in pool
-    function isUserLP(address user, address poolId) external view returns (bool);
+    function isUserLP(address user, PoolId poolId) external view returns (bool);
 
     /// @notice Get user's active positions
     function getUserActivePositions(address user) external view returns (Position[] memory);

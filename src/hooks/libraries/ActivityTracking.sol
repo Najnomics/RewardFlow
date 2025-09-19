@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {BalanceDelta} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
+import {PoolKey} from "@uniswap/v4-core/types/PoolKey.sol";
+import {PoolId} from "@uniswap/v4-core/types/PoolId.sol";
+import {BalanceDelta} from "@uniswap/v4-core/types/BalanceDelta.sol";
 import {RewardMath} from "./RewardMath.sol";
 
 /**
@@ -22,8 +23,8 @@ library ActivityTracking {
         uint256 transactionCount;
         uint256 averagePositionSize;
         uint256 consistencyScore;
-        mapping(address => uint256) poolLiquidity;
-        mapping(address => uint256) poolSwapVolume;
+        mapping(PoolId => uint256) poolLiquidity;
+        mapping(PoolId => uint256) poolSwapVolume;
     }
 
     /// @notice Activity update types
@@ -47,7 +48,7 @@ library ActivityTracking {
         PoolKey calldata key
     ) internal {
         uint256 liquidityAmount = _calculateLiquidityAmount(delta);
-        address poolId = key.toId();
+        PoolId poolId = key.toId();
         
         // Update total liquidity
         activity.totalLiquidity += liquidityAmount;
@@ -87,7 +88,7 @@ library ActivityTracking {
     /// @notice Update pool-specific swap volume
     function updatePoolSwapVolume(
         UserActivity storage activity,
-        address poolId,
+        PoolId poolId,
         uint256 swapVolume
     ) internal {
         activity.poolSwapVolume[poolId] += swapVolume;

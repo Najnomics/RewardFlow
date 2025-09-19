@@ -2,6 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {IPositionTracker} from "../hooks/interfaces/IPositionTracker.sol";
+import {PoolKey} from "@uniswap/v4-core/types/PoolKey.sol";
+import {BalanceDelta} from "@uniswap/v4-core/types/BalanceDelta.sol";
+import {PoolId} from "@uniswap/v4-core/types/PoolId.sol";
 import {PositionMath} from "./libraries/PositionMath.sol";
 import {EngagementMetrics} from "./libraries/EngagementMetrics.sol";
 import {Constants} from "../utils/Constants.sol";
@@ -17,10 +20,10 @@ contract CrossChainPositionTracker is IPositionTracker {
     using EngagementMetrics for mapping(address => EngagementMetrics.UserEngagement);
 
     /// @notice Position storage
-    mapping(address => mapping(address => Position)) public positions;
-    mapping(address => PoolInfo) public poolInfo;
-    mapping(address => address[]) public userPools;
-    mapping(address => mapping(address => bool)) public userPoolMembership;
+    mapping(address => mapping(PoolId => Position)) public positions;
+    mapping(PoolId => PoolInfo) public poolInfo;
+    mapping(address => PoolId[]) public userPools;
+    mapping(address => mapping(PoolId => bool)) public userPoolMembership;
 
     /// @notice User engagement tracking
     mapping(address => EngagementMetrics.UserEngagement) public userEngagement;
@@ -30,8 +33,6 @@ contract CrossChainPositionTracker is IPositionTracker {
     mapping(address => uint256[]) public userChains;
 
     /// @notice Events
-    event PositionUpdated(address indexed user, address indexed poolId, uint256 liquidity);
-    event PoolLPsUpdated(address indexed poolId, address[] lps, uint256[] shares);
     event CrossChainPositionUpdated(address indexed user, uint256 chainId, uint256 liquidity);
     event EngagementUpdated(address indexed user, uint256 score, uint256 tier);
 
@@ -47,7 +48,7 @@ contract CrossChainPositionTracker is IPositionTracker {
         PoolKey calldata key,
         BalanceDelta delta
     ) external override {
-        address poolId = key.toId();
+        PoolId poolId = key.toId();
         
         // Update local position
         _updateLocalPosition(user, poolId, delta);
@@ -65,24 +66,24 @@ contract CrossChainPositionTracker is IPositionTracker {
     }
 
     /// @notice Get all LPs for a pool
-    function getPoolLPs(address poolId) external view override returns (address[] memory) {
+    function getPoolLPs(PoolId poolId) external view override returns (address[] memory) {
         return poolInfo[poolId].lps;
     }
 
     /// @notice Get LP shares for a pool
-    function getPoolShares(address poolId) external view override returns (uint256[] memory) {
+    function getPoolShares(PoolId poolId) external view override returns (uint256[] memory) {
         return poolInfo[poolId].shares;
     }
 
     /// @notice Get user's position in a pool
-    function getUserPosition(address user, address poolId) external view override returns (Position memory) {
+    function getUserPosition(address user, PoolId poolId) external view override returns (Position memory) {
         return positions[user][poolId];
     }
 
     /// @notice Get user's total liquidity across all pools
     function getUserTotalLiquidity(address user) external view override returns (uint256) {
         uint256 total = 0;
-        address[] memory pools = userPools[user];
+        PoolId[] memory pools = userPools[user];
         
         for (uint256 i = 0; i < pools.length; i++) {
             total += positions[user][pools[i]].liquidity;
@@ -92,18 +93,18 @@ contract CrossChainPositionTracker is IPositionTracker {
     }
 
     /// @notice Get pool information
-    function getPoolInfo(address poolId) external view override returns (PoolInfo memory) {
+    function getPoolInfo(PoolId poolId) external view override returns (PoolInfo memory) {
         return poolInfo[poolId];
     }
 
     /// @notice Check if user is LP in pool
-    function isUserLP(address user, address poolId) external view override returns (bool) {
+    function isUserLP(address user, PoolId poolId) external view override returns (bool) {
         return userPoolMembership[user][poolId];
     }
 
     /// @notice Get user's active positions
     function getUserActivePositions(address user) external view override returns (Position[] memory) {
-        address[] memory pools = userPools[user];
+        PoolId[] memory pools = userPools[user];
         Position[] memory activePositions = new Position[](pools.length);
         uint256 activeCount = 0;
         
@@ -138,23 +139,23 @@ contract CrossChainPositionTracker is IPositionTracker {
 
     /// @notice Get user engagement score
     function getUserEngagementScore(address user) external view returns (uint256) {
-        return userEngagement[user].getEngagementScore();
+        return EngagementMetrics.getEngagementScore(userEngagement[user]);
     }
 
     /// @notice Update local position
     function _updateLocalPosition(
         address user,
-        address poolId,
+        PoolId poolId,
         BalanceDelta delta
     ) internal {
         Position storage position = positions[user][poolId];
         
         // Calculate liquidity change
-        uint256 liquidityChange = _calculateLiquidityChange(delta);
+        int256 liquidityChange = _calculateLiquidityChange(delta);
         
         // Update position
         if (liquidityChange > 0) {
-            position.liquidity += liquidityChange;
+            position.liquidity += uint256(liquidityChange);
             position.active = true;
         } else if (position.liquidity > uint256(-liquidityChange)) {
             position.liquidity -= uint256(-liquidityChange);
@@ -177,16 +178,16 @@ contract CrossChainPositionTracker is IPositionTracker {
 
     /// @notice Update pool information
     function _updatePoolInfo(
-        address poolId,
+        PoolId poolId,
         address user,
         BalanceDelta delta
     ) internal {
         PoolInfo storage pool = poolInfo[poolId];
         
         // Update total liquidity
-        uint256 liquidityChange = _calculateLiquidityChange(delta);
+        int256 liquidityChange = _calculateLiquidityChange(delta);
         if (liquidityChange > 0) {
-            pool.totalLiquidity += liquidityChange;
+            pool.totalLiquidity += uint256(liquidityChange);
         } else if (pool.totalLiquidity > uint256(-liquidityChange)) {
             pool.totalLiquidity -= uint256(-liquidityChange);
         } else {
@@ -201,7 +202,7 @@ contract CrossChainPositionTracker is IPositionTracker {
 
     /// @notice Update pool LPs
     function _updatePoolLPs(
-        address poolId,
+        PoolId poolId,
         address user,
         int256 liquidityChange
     ) internal {
@@ -241,11 +242,11 @@ contract CrossChainPositionTracker is IPositionTracker {
     ) internal {
         EngagementMetrics.UserEngagement storage engagement = userEngagement[user];
         
-        uint256 liquidityChange = _calculateLiquidityChange(delta);
-        engagement.updateLiquidityActivity(liquidityChange);
+        int256 liquidityChange = _calculateLiquidityChange(delta);
+        EngagementMetrics.updateLiquidityActivity(engagement, uint256(liquidityChange));
         
-        uint256 newScore = engagement.getEngagementScore();
-        uint256 newTier = engagement.getTier();
+        uint256 newScore = EngagementMetrics.getEngagementScore(engagement);
+        uint256 newTier = EngagementMetrics.getTier(engagement);
         
         emit EngagementUpdated(user, newScore, newTier);
     }
@@ -253,13 +254,13 @@ contract CrossChainPositionTracker is IPositionTracker {
     /// @notice Update cross-chain position
     function _updateCrossChainPosition(
         address user,
-        address poolId,
+        PoolId poolId,
         BalanceDelta delta
     ) internal {
         // This would integrate with cross-chain bridges in practice
         // For now, just update local cross-chain tracking
         uint256 chainId = block.chainid;
-        uint256 liquidityChange = _calculateLiquidityChange(delta);
+        int256 liquidityChange = _calculateLiquidityChange(delta);
         
         if (liquidityChange > 0) {
             crossChainPositions[user][chainId].liquidity += uint256(liquidityChange);
@@ -292,7 +293,7 @@ contract CrossChainPositionTracker is IPositionTracker {
     }
 
     /// @notice Find user in pool LP list
-    function _findUserInPool(address poolId, address user) internal view returns (uint256) {
+    function _findUserInPool(PoolId poolId, address user) internal view returns (uint256) {
         address[] memory lps = poolInfo[poolId].lps;
         
         for (uint256 i = 0; i < lps.length; i++) {
@@ -305,11 +306,11 @@ contract CrossChainPositionTracker is IPositionTracker {
     }
 
     /// @notice Remove user from pool
-    function _removeUserFromPool(address user, address poolId) internal {
-        address[] storage userPoolsList = userPools[user];
+    function _removeUserFromPool(address user, PoolId poolId) internal {
+        PoolId[] storage userPoolsList = userPools[user];
         
         for (uint256 i = 0; i < userPoolsList.length; i++) {
-            if (userPoolsList[i] == poolId) {
+            if (PoolId.unwrap(userPoolsList[i]) == PoolId.unwrap(poolId)) {
                 userPoolsList[i] = userPoolsList[userPoolsList.length - 1];
                 userPoolsList.pop();
                 break;
@@ -320,7 +321,7 @@ contract CrossChainPositionTracker is IPositionTracker {
     }
 
     /// @notice Remove LP from pool
-    function _removeLPFromPool(address poolId, uint256 index) internal {
+    function _removeLPFromPool(PoolId poolId, uint256 index) internal {
         PoolInfo storage pool = poolInfo[poolId];
         
         pool.lps[index] = pool.lps[pool.lps.length - 1];

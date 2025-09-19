@@ -52,7 +52,6 @@ library Errors {
     
     /// @notice System errors
     error SystemPaused();
-    error EmergencyMode();
     error UpgradeFailed();
     error GovernanceFailed();
     

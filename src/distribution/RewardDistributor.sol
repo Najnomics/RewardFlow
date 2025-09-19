@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IRewardAggregatorAVS} from "../avs/interfaces/IRewardAggregatorAVS.sol";
+// Removed AVS dependency - using direct reward distribution
 import {DistributionUtils} from "./libraries/DistributionUtils.sol";
 import {PreferenceManager} from "./libraries/PreferenceManager.sol";
 import {Constants} from "../utils/Constants.sol";
@@ -47,7 +47,6 @@ contract RewardDistributor {
     }
 
     /// @notice State variables
-    IRewardAggregatorAVS public immutable rewardAVS;
     address public immutable rewardToken;
     address public immutable spokePool;
     
@@ -104,8 +103,8 @@ contract RewardDistributor {
         _;
     }
 
-    modifier onlyRewardAVS() {
-        if (msg.sender != address(rewardAVS)) revert Unauthorized();
+    modifier onlyAuthorized() {
+        if (msg.sender != owner) revert Unauthorized();
         _;
     }
 
@@ -115,11 +114,9 @@ contract RewardDistributor {
     }
 
     constructor(
-        address _rewardAVS,
         address _rewardToken,
         address _spokePool
     ) {
-        rewardAVS = IRewardAggregatorAVS(_rewardAVS);
         rewardToken = _rewardToken;
         spokePool = _spokePool;
         owner = msg.sender;
@@ -136,7 +133,16 @@ contract RewardDistributor {
         address user,
         uint256 amount,
         uint256 targetChain
-    ) external onlyRewardAVS whenNotPaused {
+    ) external onlyAuthorized whenNotPaused {
+        _executeRewardDistribution(user, amount, targetChain);
+    }
+
+    /// @notice Internal reward distribution execution
+    function _executeRewardDistribution(
+        address user,
+        uint256 amount,
+        uint256 targetChain
+    ) internal {
         if (amount == 0) revert InvalidAmount();
         if (!supportedChains[targetChain]) revert UnsupportedChain();
         
@@ -186,13 +192,13 @@ contract RewardDistributor {
     function executeInstantClaim(
         address user,
         uint256 amount
-    ) external onlyRewardAVS whenNotPaused {
+    ) external onlyAuthorized whenNotPaused {
         UserPreferences memory prefs = userPreferences[user];
         
         if (amount < prefs.claimThreshold) revert InvalidAmount();
         
         // Execute immediate distribution to preferred chain
-        executeRewardDistribution(user, amount, prefs.preferredChain);
+        _executeRewardDistribution(user, amount, prefs.preferredChain);
     }
 
     /// @notice Execute across transfer
@@ -313,6 +319,13 @@ contract RewardDistributor {
         address user
     ) external view returns (uint256) {
         UserPreferences memory prefs = userPreferences[user];
-        return PreferenceManager.getOptimalTiming(prefs, block.timestamp);
+        PreferenceManager.UserPreferences memory libPrefs = PreferenceManager.UserPreferences({
+            preferredChain: prefs.preferredChain,
+            claimThreshold: prefs.claimThreshold,
+            claimFrequency: prefs.claimFrequency,
+            autoClaimEnabled: prefs.autoClaimEnabled,
+            lastUpdate: prefs.lastUpdate
+        });
+        return PreferenceManager.getOptimalTiming(libPrefs, block.timestamp);
     }
 }
