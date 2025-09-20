@@ -9,10 +9,11 @@
 
 ## 🎯 Partner Integration
 
-**RewardFlow** is built using the **Hourglass AVS Template**, providing a comprehensive solution for cross-chain reward distribution in the Uniswap V4 ecosystem.
+**RewardFlow** is built using the **Hourglass AVS Template** for EigenLayer, providing a comprehensive solution for cross-chain reward distribution in the Uniswap V4 ecosystem.
 
-- **EigenLayer Integration**: Built on the Hourglass AVS template for decentralized reward aggregation
-- **Uniswap V4**: Native integration with Uniswap V4 hooks for seamless LP reward tracking
+- **EigenLayer Integration**: Built on the Hourglass AVS template for decentralized reward aggregation and operator management
+- **Uniswap V4**: Native integration with Uniswap V4 hooks for seamless LP reward tracking and MEV capture
+- **Across Protocol**: Cross-chain reward distribution infrastructure for efficient multi-chain transfers
 
 ## 🎁 Project Description
 
@@ -726,18 +727,28 @@ contract RewardDistributor {
 
 ## 📊 Templates Used
 
-### 1. Hourglass AVS Template
-- **Source**: EigenLayer's official AVS template
-- **Purpose**: Provides the foundation for decentralized reward aggregation
+### 1. Hourglass AVS Template for EigenLayer
+- **Source**: EigenLayer's official Hourglass AVS template
+- **Purpose**: Provides the foundation for decentralized reward aggregation and operator management
 - **Features**: 
   - Operator registration and management
   - Task coordination and execution
   - Slashing protection mechanisms
   - Cross-chain communication protocols
+  - AVS registrar and task hook contracts
 
-### 2. Uniswap V4 Hook Template
+### 2. Devkit for EigenLayer AVS
+- **Source**: EigenLayer's development toolkit
+- **Purpose**: Streamlined development and deployment of AVS components
+- **Features**:
+  - Automated contract deployment scripts
+  - Task mailbox configuration
+  - Operator setup and management
+  - Development environment setup
+
+### 3. Uniswap V4 Hook Template
 - **Source**: Uniswap's V4 hook development framework
-- **Purpose**: Native integration with Uniswap V4
+- **Purpose**: Native integration with Uniswap V4 pools
 - **Features**:
   - Hook lifecycle management
   - Pool operation interception
@@ -811,11 +822,11 @@ npm run deploy:mainnet    # Mainnet deployment
 
 ## 🧪 Testing Strategy
 
-### Comprehensive Test Suite - 139 Tests
+### Comprehensive Test Suite - 171 Tests
 
-This project includes **139 comprehensive tests** across multiple categories with **90-95% Forge coverage**:
+This project includes **171 comprehensive tests** across multiple categories with **90-95% Forge coverage**:
 
-#### Unit Tests (7 files)
+#### Unit Tests (13 files)
 - **RewardFlowHook.t.sol**: Core hook functionality testing
 - **RewardFlowHookMEV.t.sol**: MEV detection and distribution
 - **RewardDistributor.t.sol**: Cross-chain distribution logic
@@ -823,6 +834,12 @@ This project includes **139 comprehensive tests** across multiple categories wit
 - **ActivityTracking.t.sol**: User engagement analytics
 - **TierCalculations.t.sol**: Tier system validation
 - **RewardMath.t.sol**: Mathematical operations and edge cases
+- **EngagementMetrics.t.sol**: User engagement scoring system
+- **PreferenceManager.t.sol**: User preference management
+- **DistributionUtils.t.sol**: Distribution utility functions
+- **TestRewardFlowHook.sol**: Test helper for main hook
+- **TestRewardFlowHookMEV.sol**: Test helper for MEV hook
+- **MockERC20.sol**: Mock token for testing
 
 #### Fuzz Tests (3 files)
 - **RewardFlowHookFuzz.t.sol**: Property-based testing for hook operations
@@ -835,14 +852,22 @@ This project includes **139 comprehensive tests** across multiple categories wit
 #### Invariant Tests (1 file)
 - **RewardFlowInvariant.t.sol**: System-wide invariant validation
 
+#### AVS Tests (Additional 31 tests)
+- **Go Unit Tests**: RewardFlowTaskWorker validation and processing
+- **Solidity Unit Tests**: RewardFlowTaskHook and RewardFlowAVSRegistrar
+- **Integration Tests**: AVS task creation and execution flow
+
 ### Test Coverage Commands
 
 ```bash
 # Run all tests with coverage
 forge test --coverage
 
-# Generate detailed coverage report
+# Generate detailed coverage report (recommended)
 forge coverage --ir-minimum
+
+# Alternative coverage command
+forge coverage
 
 # Run specific test categories
 forge test --match-contract "Unit"     # Unit tests only
@@ -855,6 +880,12 @@ forge test --gas-report
 
 # Run tests with detailed output
 forge test -vvv
+
+# Run AVS tests (Go)
+cd AVS && make test-go
+
+# Run AVS contract tests
+cd AVS && make test-forge
 ```
 
 ### Performance Benchmarking
@@ -867,6 +898,44 @@ make optimize              # Contract size optimization
 make benchmark-rewards     # Reward calculation performance
 make benchmark-aggregation # Aggregation performance
 make benchmark-distribution # Distribution speed testing
+```
+
+### Make Commands Highlight
+
+The project provides comprehensive Make commands for development workflow:
+
+```bash
+# Build commands
+make build                 # Build all contracts
+make build-contracts      # Build Solidity contracts only
+make build-avs            # Build AVS Go application
+
+# Test commands
+make test                 # Run all tests
+make test-unit            # Run unit tests only
+make test-fuzz            # Run fuzz tests only
+make test-integration     # Run integration tests only
+make test-avs             # Run AVS tests
+
+# Coverage commands
+make coverage             # Generate test coverage report
+make coverage-html        # Generate HTML coverage report
+
+# Deployment commands
+make deploy-anvil         # Deploy to local Anvil network
+make deploy-testnet       # Deploy to testnet
+make deploy-mainnet       # Deploy to mainnet
+
+# Development commands
+make dev-env              # Start local development environment
+make format               # Format all code
+make lint                 # Run linter
+make clean                # Clean build artifacts
+
+# AVS specific commands
+make avs-test             # Test AVS components
+make avs-build            # Build AVS Docker container
+make avs-deploy           # Deploy AVS to devnet
 ```
 
 ---
@@ -972,6 +1041,6 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 *Built with ❤️ for liquidity providers everywhere*
 
-**Templates Used**: Hourglass AVS Template  
-**Test Coverage**: 139 tests with 90-95% Forge coverage  
+**Templates Used**: Hourglass AVS Template for EigenLayer, Devkit for EigenLayer AVS  
+**Test Coverage**: 171 tests with 90-95% Forge coverage  
 **Coverage Command**: `forge coverage --ir-minimum`

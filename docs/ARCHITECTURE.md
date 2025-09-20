@@ -64,17 +64,19 @@ RewardDistributor → Across Protocol → Target Chain → User Wallet
 ## Testing Strategy
 
 ### Comprehensive Test Coverage
-- **139 total tests** across all components
+- **171 total tests** across all components
 - Unit tests for individual functions
 - Fuzz tests for edge cases
 - Integration tests for component interactions
 - Invariant tests for system properties
+- AVS tests for EigenLayer integration
 
 ### Test Categories
-- Unit Tests: 13 files
+- Unit Tests: 13 files (main project)
 - Fuzz Tests: 3 files
 - Integration Tests: 1 file
 - Invariant Tests: 1 file
+- AVS Tests: 31 additional tests (Go + Solidity)
 
 ## Deployment Architecture
 
