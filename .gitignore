@@ -9,6 +9,7 @@ broadcast/
 .env.local
 .env.production
 .env.staging
+!.env.example
 
 # Node modules
 node_modules/
@@ -90,6 +91,12 @@ dist/
 build/
 
 # Dependency directories
+# Note: lib/ is intentionally not ignored to preserve dependencies
 
-
+# Context directory (contains external projects)
 context/
+
+# Deployment artifacts
+deployments/
+broadcast/
+!broadcast/README.md

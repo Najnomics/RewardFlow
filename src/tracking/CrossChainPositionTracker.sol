@@ -243,7 +243,9 @@ contract CrossChainPositionTracker is IPositionTracker {
         EngagementMetrics.UserEngagement storage engagement = userEngagement[user];
         
         int256 liquidityChange = _calculateLiquidityChange(delta);
-        EngagementMetrics.updateLiquidityActivity(engagement, uint256(liquidityChange));
+        if (liquidityChange > 0) {
+            EngagementMetrics.updateLiquidityActivity(engagement, uint256(liquidityChange));
+        }
         
         uint256 newScore = EngagementMetrics.getEngagementScore(engagement);
         uint256 newTier = EngagementMetrics.getTier(engagement);
@@ -285,11 +287,18 @@ contract CrossChainPositionTracker is IPositionTracker {
 
     /// @notice Calculate liquidity change from delta
     function _calculateLiquidityChange(BalanceDelta delta) internal pure returns (int256) {
-        uint256 delta0 = uint256(int256(delta.amount0()));
-        uint256 delta1 = uint256(int256(delta.amount1()));
+        int256 delta0 = delta.amount0();
+        int256 delta1 = delta.amount1();
         
-        // Use the larger delta as liquidity change
-        return delta0 > delta1 ? int256(delta0) : int256(delta1);
+        // Use the larger absolute delta as liquidity change, but preserve sign
+        int256 absDelta0 = delta0 < 0 ? -delta0 : delta0;
+        int256 absDelta1 = delta1 < 0 ? -delta1 : delta1;
+        
+        if (absDelta0 > absDelta1) {
+            return delta0;
+        } else {
+            return delta1;
+        }
     }
 
     /// @notice Find user in pool LP list

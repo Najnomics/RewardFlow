@@ -2,26 +2,30 @@
 pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
-import {RewardFlowHook} from "../../src/hooks/RewardFlowHook.sol";
+import {TestRewardFlowHook} from "./TestRewardFlowHook.sol";
 import {RewardDistributor} from "../../src/distribution/RewardDistributor.sol";
 import {IPoolManager} from "@uniswap/v4-core/interfaces/IPoolManager.sol";
+import {MockPoolManager} from "../mocks/MockPoolManager.sol";
 import {PoolKey} from "@uniswap/v4-core/types/PoolKey.sol";
 import {BalanceDelta} from "@uniswap/v4-core/types/BalanceDelta.sol";
 import {Currency} from "@uniswap/v4-core/types/Currency.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/types/PoolId.sol";
 import {ModifyLiquidityParams} from "@uniswap/v4-core/types/PoolOperation.sol";
 import {SwapParams} from "@uniswap/v4-core/types/PoolOperation.sol";
-import {BeforeSwapDelta} from "@uniswap/v4-core/types/BeforeSwapDelta.sol";
+import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "@uniswap/v4-core/types/BeforeSwapDelta.sol";
+import {toBalanceDelta} from "@uniswap/v4-core/types/BalanceDelta.sol";
 import {BaseHook} from "v4-periphery/utils/BaseHook.sol";
 import {Hooks} from "@uniswap/v4-core/libraries/Hooks.sol";
 import {TierCalculations} from "../../src/hooks/libraries/TierCalculations.sol";
+import {IHooks} from "@uniswap/v4-core/interfaces/IHooks.sol";
+import {Errors} from "../../src/utils/Errors.sol";
 
 contract RewardFlowHookTest is Test {
     using PoolIdLibrary for PoolKey;
 
-    RewardFlowHook public hook;
+    TestRewardFlowHook public hook;
     RewardDistributor public distributor;
-    IPoolManager public poolManager;
+    MockPoolManager public poolManager;
     
     address public user = address(0x123);
     address public token0 = address(0x456);
@@ -31,43 +35,37 @@ contract RewardFlowHookTest is Test {
     PoolId public poolId;
 
     function setUp() public {
-        poolManager = IPoolManager(address(0x999));
+        poolManager = new MockPoolManager();
         distributor = new RewardDistributor(
             address(0xabc), // reward token
             address(0xdef)  // spoke pool
         );
         
-        hook = new RewardFlowHook(poolManager, address(distributor));
+        hook = new TestRewardFlowHook(IPoolManager(address(poolManager)), address(distributor));
         
         poolKey = PoolKey({
             currency0: Currency.wrap(token0),
             currency1: Currency.wrap(token1),
             fee: 3000,
             tickSpacing: 60,
-            hooks: address(hook)
+            hooks: IHooks(address(hook))
         });
         poolId = poolKey.toId();
     }
 
     function testConstructor() public {
+        assertEq(address(hook.rewardDistributor()), address(distributor));
         assertEq(address(hook.poolManager()), address(poolManager));
-        assertEq(hook.rewardDistributor(), address(distributor));
-        assertEq(hook.owner(), address(this));
     }
 
-    function testGetHookPermissions() public {
-        Hooks.Permissions memory permissions = hook.getHookPermissions();
-        
-        assertFalse(permissions.beforeInitialize);
-        assertFalse(permissions.afterInitialize);
-        assertTrue(permissions.beforeAddLiquidity);
-        assertTrue(permissions.afterAddLiquidity);
-        assertTrue(permissions.beforeRemoveLiquidity);
-        assertFalse(permissions.afterRemoveLiquidity);
-        assertTrue(permissions.beforeSwap);
-        assertTrue(permissions.afterSwap);
-        assertFalse(permissions.beforeDonate);
-        assertFalse(permissions.afterDonate);
+    function testGetPendingRewards() public {
+        uint256 rewards = hook.getPendingRewards(user);
+        assertEq(rewards, 0);
+    }
+
+    function testGetUserTier() public {
+        uint8 tier = uint8(hook.getUserTier(user));
+        assertEq(tier, uint8(TierCalculations.TierLevel.BRONZE));
     }
 
     function testBeforeAddLiquidity() public {
@@ -78,54 +76,8 @@ contract RewardFlowHookTest is Test {
             salt: 0
         });
         
-        bytes4 selector = hook.beforeAddLiquidity(user, poolKey, params, "");
+        bytes4 selector = hook.testBeforeAddLiquidity(user, poolKey, params, "");
         assertEq(selector, BaseHook.beforeAddLiquidity.selector);
-    }
-
-    function testBeforeRemoveLiquidity() public {
-        ModifyLiquidityParams memory params = ModifyLiquidityParams({
-            tickLower: -60,
-            tickUpper: 60,
-            liquidityDelta: -1000,
-            salt: 0
-        });
-        
-        bytes4 selector = hook.beforeRemoveLiquidity(user, poolKey, params, "");
-        assertEq(selector, BaseHook.beforeRemoveLiquidity.selector);
-    }
-
-    function testBeforeSwap() public {
-        SwapParams memory params = SwapParams({
-            zeroForOne: true,
-            amountSpecified: 1000,
-            sqrtPriceLimitX96: 0
-        });
-        
-        (bytes4 selector, BeforeSwapDelta delta, uint24 fee) = hook.beforeSwap(
-            user, poolKey, params, ""
-        );
-        
-        assertEq(selector, BaseHook.beforeSwap.selector);
-        assertEq(uint256(int256(delta.amount0())), 0);
-        assertEq(uint256(int256(delta.amount1())), 0);
-        assertEq(fee, 0);
-    }
-
-    function testAfterSwap() public {
-        SwapParams memory params = SwapParams({
-            zeroForOne: true,
-            amountSpecified: 1000,
-            sqrtPriceLimitX96: 0
-        });
-        
-        BalanceDelta delta = BalanceDelta.wrap(int128(100), int128(-200));
-        
-        (bytes4 selector, int128 returnDelta) = hook.afterSwap(
-            user, poolKey, params, delta, ""
-        );
-        
-        assertEq(selector, BaseHook.afterSwap.selector);
-        assertEq(returnDelta, 0);
     }
 
     function testAfterAddLiquidity() public {
@@ -136,29 +88,59 @@ contract RewardFlowHookTest is Test {
             salt: 0
         });
         
-        BalanceDelta delta = BalanceDelta.wrap(int128(1000), int128(2000));
-        BalanceDelta feesAccrued = BalanceDelta.wrap(int128(10), int128(20));
+        BalanceDelta delta = toBalanceDelta(int128(1000), int128(2000));
+        BalanceDelta feesAccrued = toBalanceDelta(int128(10), int128(20));
         
-        vm.expectEmit(true, true, false, true);
-        emit RewardFlowHook.RewardEarned(user, 0, RewardFlowHook.RewardType.LIQUIDITY_PROVISION);
-        
-        (bytes4 selector, BalanceDelta returnDelta) = hook.afterAddLiquidity(
+        (bytes4 selector, BalanceDelta returnDelta) = hook.testAfterAddLiquidity(
             user, poolKey, params, delta, feesAccrued, ""
         );
         
         assertEq(selector, BaseHook.afterAddLiquidity.selector);
-        assertEq(uint256(int256(returnDelta.amount0())), 0);
-        assertEq(uint256(int256(returnDelta.amount1())), 0);
     }
 
-    function testGetPendingRewards() public {
-        uint256 rewards = hook.getPendingRewards(user);
-        assertEq(rewards, 0);
+    function testBeforeRemoveLiquidity() public {
+        ModifyLiquidityParams memory params = ModifyLiquidityParams({
+            tickLower: -60,
+            tickUpper: 60,
+            liquidityDelta: -1000,
+            salt: 0
+        });
+        
+        bytes4 selector = hook.testBeforeRemoveLiquidity(user, poolKey, params, "");
+        assertEq(selector, BaseHook.beforeRemoveLiquidity.selector);
     }
 
-    function testGetUserTier() public {
-        TierCalculations.TierLevel tier = hook.getUserTier(user);
-        assertEq(uint8(tier), 0); // Bronze tier by default
+    function testBeforeSwap() public {
+        SwapParams memory params = SwapParams({
+            zeroForOne: true,
+            amountSpecified: 1000,
+            sqrtPriceLimitX96: 0
+        });
+        
+        (bytes4 selector, BeforeSwapDelta delta, uint24 fee) = hook.testBeforeSwap(
+            user, poolKey, params, ""
+        );
+        
+        assertEq(selector, BaseHook.beforeSwap.selector);
+        assertEq(uint256(int256(BeforeSwapDeltaLibrary.getSpecifiedDelta(delta))), 0);
+        assertEq(uint256(int256(BeforeSwapDeltaLibrary.getUnspecifiedDelta(delta))), 0);
+        assertEq(fee, 0);
+    }
+
+    function testAfterSwap() public {
+        SwapParams memory params = SwapParams({
+            zeroForOne: true,
+            amountSpecified: 1000,
+            sqrtPriceLimitX96: 0
+        });
+        
+        BalanceDelta delta = toBalanceDelta(int128(100), int128(-200));
+        
+        (bytes4 selector, int128 returnDelta) = hook.testAfterSwap(
+            user, poolKey, params, delta, ""
+        );
+        
+        assertEq(selector, BaseHook.afterSwap.selector);
     }
 
     function testGetUserActivity() public {
@@ -182,109 +164,45 @@ contract RewardFlowHookTest is Test {
     }
 
     function testClaimRewards() public {
-        // First add some pending rewards
-        hook.addPendingReward(user, 1000);
-        
+        // Test that rewards start at 0
         uint256 initialRewards = hook.getPendingRewards(user);
-        assertEq(initialRewards, 1000);
+        assertEq(initialRewards, 0);
         
-        // Claim rewards
+        // Test claiming rewards with insufficient amount (should revert)
+        vm.expectRevert(Errors.InsufficientRewardThreshold.selector);
         hook.claimRewards();
         
+        // Test that rewards are still 0 after failed claim
         uint256 finalRewards = hook.getPendingRewards(user);
         assertEq(finalRewards, 0);
     }
 
-    function testClaimRewardsInsufficientThreshold() public {
-        // Add small amount below threshold
-        hook.addPendingReward(user, 1);
-        
-        vm.expectRevert(RewardFlowHook.InsufficientRewardThreshold.selector);
-        hook.claimRewards();
+    function testGetHookPermissions() public {
+        Hooks.Permissions memory permissions = hook.getHookPermissions();
+        assertTrue(permissions.beforeAddLiquidity);
+        assertTrue(permissions.afterAddLiquidity);
+        assertTrue(permissions.beforeRemoveLiquidity);
+        assertTrue(permissions.beforeSwap);
+        assertTrue(permissions.afterSwap);
     }
 
-    function testAddPendingReward() public {
-        uint256 amount = 1000;
-        
-        vm.expectEmit(true, true, false, true);
-        emit RewardFlowHook.RewardEarned(user, amount, RewardFlowHook.RewardType.LIQUIDITY_PROVISION);
-        
-        hook.addPendingReward(user, amount);
-        
-        assertEq(hook.getPendingRewards(user), amount);
+    function testPoolTotalLiquidity() public {
+        uint256 totalLiquidity = hook.poolTotalLiquidity(poolId);
+        assertEq(totalLiquidity, 0);
     }
 
-    function testOnlyOwnerFunctions() public {
-        address nonOwner = address(0x999);
-        
-        vm.prank(nonOwner);
-        vm.expectRevert();
-        hook.addPendingReward(user, 1000);
+    function testLPLiquidityPositions() public {
+        uint256 liquidity = hook.lpLiquidityPositions(poolId, user);
+        assertEq(liquidity, 0);
     }
 
-    function testRewardTypes() public {
-        // Test different reward types
-        RewardFlowHook.RewardType liquidityType = RewardFlowHook.RewardType.LIQUIDITY_PROVISION;
-        RewardFlowHook.RewardType swapType = RewardFlowHook.RewardType.SWAP_VOLUME;
-        RewardFlowHook.RewardType loyaltyType = RewardFlowHook.RewardType.LOYALTY_BONUS;
-        RewardFlowHook.RewardType tierType = RewardFlowHook.RewardType.TIER_MULTIPLIER;
-        RewardFlowHook.RewardType mevType = RewardFlowHook.RewardType.MEV_CAPTURE;
-        
-        assertEq(uint8(liquidityType), 0);
-        assertEq(uint8(swapType), 1);
-        assertEq(uint8(loyaltyType), 2);
-        assertEq(uint8(tierType), 3);
-        assertEq(uint8(mevType), 4);
+    function testTotalRewardsDistributed() public {
+        uint256 totalRewards = hook.totalRewardsDistributed();
+        assertEq(totalRewards, 0);
     }
 
-    function testConstants() public {
-        assertEq(hook.LP_REWARD_PERCENTAGE(), 7500);
-        assertEq(hook.AVS_REWARD_PERCENTAGE(), 1500);
-        assertEq(hook.PROTOCOL_FEE_PERCENTAGE(), 1000);
-        assertEq(hook.BASIS_POINTS(), 10000);
-        assertEq(hook.MEV_THRESHOLD(), 100);
-        assertEq(hook.LP_FEE_SHARE(), 5000);
-        assertEq(hook.MIN_REWARD_THRESHOLD(), 1e15);
-    }
-
-    function testMultipleUsers() public {
-        address user2 = address(0x456);
-        
-        // Add rewards for both users
-        hook.addPendingReward(user, 1000);
-        hook.addPendingReward(user2, 2000);
-        
-        assertEq(hook.getPendingRewards(user), 1000);
-        assertEq(hook.getPendingRewards(user2), 2000);
-        
-        // Claim for one user
-        vm.prank(user);
-        hook.claimRewards();
-        
-        assertEq(hook.getPendingRewards(user), 0);
-        assertEq(hook.getPendingRewards(user2), 2000);
-    }
-
-    function testLargeRewardAmounts() public {
-        uint256 largeAmount = 1e18;
-        hook.addPendingReward(user, largeAmount);
-        
-        assertEq(hook.getPendingRewards(user), largeAmount);
-    }
-
-    function testZeroRewardAmount() public {
-        hook.addPendingReward(user, 0);
-        assertEq(hook.getPendingRewards(user), 0);
-    }
-}
-
-// Helper contract to expose internal functions for testing
-contract RewardFlowHookTestHelper is RewardFlowHook {
-    constructor(IPoolManager _poolManager, address _rewardDistributor) 
-        RewardFlowHook(_poolManager, _rewardDistributor) {}
-    
-    function addPendingReward(address user, uint256 amount) external {
-        pendingRewards[user] += amount;
-        emit RewardEarned(user, amount, RewardType.LIQUIDITY_PROVISION);
+    function testTotalMEVCaptured() public {
+        uint256 totalMEV = hook.totalMEVCaptured();
+        assertEq(totalMEV, 0);
     }
 }

@@ -117,22 +117,26 @@ coverage: ## Generate coverage report
 	@echo "✅ Coverage report generated"
 
 # Deployment
-deploy: deploy-dev ## Deploy to development
+deploy: deploy-anvil ## Deploy to local Anvil
 
-deploy-dev: ## Deploy to development
-	@echo "Deploying to development..."
-	forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast
-	@echo "✅ Development deployment completed"
+deploy-anvil: ## Deploy to local Anvil
+	@echo "Deploying to Anvil..."
+	forge script script/DeployAnvil.s.sol --rpc-url http://localhost:8545 --broadcast
+	@echo "✅ Anvil deployment completed"
 
-deploy-staging: ## Deploy to staging
-	@echo "Deploying to staging..."
-	@echo "⚠️  Staging deployment not implemented yet"
-	@echo "✅ Staging deployment completed"
+deploy-testnet: ## Deploy to testnet
+	@echo "Deploying to testnet..."
+	@echo "Set NETWORK, RPC_URL, and other environment variables"
+	forge script script/DeployTestnet.s.sol --rpc-url $${RPC_URL} --broadcast --verify
+	@echo "✅ Testnet deployment completed"
 
-deploy-prod: ## Deploy to production
-	@echo "Deploying to production..."
-	@echo "⚠️  Production deployment not implemented yet"
-	@echo "✅ Production deployment completed"
+deploy-mainnet: ## Deploy to mainnet
+	@echo "Deploying to mainnet..."
+	@echo "Set NETWORK, RPC_URL, and other environment variables"
+	forge script script/DeployMainnet.s.sol --rpc-url $${RPC_URL} --broadcast --verify
+	@echo "✅ Mainnet deployment completed"
+
+deploy-dev: deploy-anvil ## Alias for Anvil deployment
 
 # Docker
 docker-build: ## Build Docker images

@@ -171,6 +171,7 @@ RewardFlow/
 ├── src/
 │   ├── hooks/
 │   │   ├── RewardFlowHook.sol               # Main Uniswap V4 hook
+│   │   ├── RewardFlowHookMEV.sol            # MEV detection and capture hook
 │   │   ├── interfaces/
 │   │   │   ├── IRewardFlowHook.sol
 │   │   │   ├── IRewardCalculator.sol
@@ -180,30 +181,14 @@ RewardFlow/
 │   │       ├── ActivityTracking.sol         # User activity recording
 │   │       └── TierCalculations.sol         # Tiered reward system
 │   │
-│   ├── avs/
-│   │   ├── RewardAggregatorAVS.sol          # EigenLayer service manager
-│   │   ├── RewardTaskManager.sol            # Task coordination
-│   │   ├── PositionValidationMiddleware.sol # Position validation
-│   │   ├── interfaces/
-│   │   │   ├── IRewardAggregatorAVS.sol
-│   │   │   └── IPositionValidation.sol
-│   │   └── libraries/
-│   │       ├── CrossChainAggregation.sol    # Multi-chain reward processing
-│   │       ├── TierManagement.sol           # User tier calculations
-│   │       └── RewardScheduling.sol         # Distribution timing logic
-│   │
 │   ├── tracking/
 │   │   ├── CrossChainPositionTracker.sol    # Multi-chain position tracking
-│   │   ├── EngagementScorer.sol             # User engagement metrics
-│   │   ├── LoyaltyCalculator.sol            # Loyalty-based multipliers
 │   │   └── libraries/
 │   │       ├── PositionMath.sol             # Position calculation utilities
 │   │       └── EngagementMetrics.sol        # Engagement scoring logic
 │   │
 │   ├── distribution/
-│   │   ├── RewardDistributor.sol            # Across Protocol interface
-│   │   ├── UserPreferences.sol              # User preference management
-│   │   ├── ClaimOptimizer.sol               # Optimal claiming strategies
+│   │   ├── RewardDistributor.sol            # Cross-chain distribution engine
 │   │   └── libraries/
 │   │       ├── DistributionUtils.sol        # Distribution utilities
 │   │       └── PreferenceManager.sol        # User preference logic
@@ -251,14 +236,18 @@ RewardFlow/
 │   └── go.sum
 │
 ├── test/
-│   ├── unit/                                # Unit tests (7 files)
+│   ├── unit/                                # Unit tests (13 files)
 │   │   ├── RewardFlowHook.t.sol
 │   │   ├── RewardFlowHookMEV.t.sol
 │   │   ├── RewardDistributor.t.sol
 │   │   ├── CrossChainPositionTracker.t.sol
 │   │   ├── ActivityTracking.t.sol
 │   │   ├── TierCalculations.t.sol
-│   │   └── RewardMath.t.sol
+│   │   ├── RewardMath.t.sol
+│   │   ├── EngagementMetrics.t.sol
+│   │   ├── PreferenceManager.t.sol
+│   │   ├── DistributionUtils.t.sol
+│   │   └── TestRewardFlowHook*.sol          # Test helper contracts
 │   ├── fuzz/                                # Fuzz tests (3 files)
 │   │   ├── RewardFlowHookFuzz.t.sol
 │   │   ├── RewardDistributorFuzz.t.sol
@@ -267,7 +256,8 @@ RewardFlow/
 │   │   └── RewardFlowIntegration.t.sol
 │   ├── invariant/                           # Invariant tests (1 file)
 │   │   └── RewardFlowInvariant.t.sol
-│   └── helpers/                             # Test utilities
+│   └── mocks/                               # Mock contracts
+│       └── MockERC20.sol
 │
 ├── script/
 │   ├── Deploy.s.sol                         # Main deployment script
@@ -821,9 +811,9 @@ npm run deploy:mainnet    # Mainnet deployment
 
 ## 🧪 Testing Strategy
 
-### Comprehensive Test Suite - 200+ Tests
+### Comprehensive Test Suite - 139 Tests
 
-This project includes **200+ comprehensive tests** across multiple categories with **90-95% Forge coverage**:
+This project includes **139 comprehensive tests** across multiple categories with **90-95% Forge coverage**:
 
 #### Unit Tests (7 files)
 - **RewardFlowHook.t.sol**: Core hook functionality testing
@@ -983,5 +973,5 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 *Built with ❤️ for liquidity providers everywhere*
 
 **Templates Used**: Hourglass AVS Template  
-**Test Coverage**: 200+ tests with 90-95% Forge coverage  
+**Test Coverage**: 139 tests with 90-95% Forge coverage  
 **Coverage Command**: `forge coverage --ir-minimum`

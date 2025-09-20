@@ -153,6 +153,17 @@ contract RewardFlowHookMEV is BaseHook, ReentrancyGuard, Ownable {
         
         if (params.liquidityDelta < 0) {
             uint256 liquidityRemoved = uint256(-int256(params.liquidityDelta));
+            uint256 currentLiquidity = lpPositions[poolId][sender];
+            uint256 currentTotalLiquidity = totalLiquidity[poolId];
+            
+            // Ensure we don't underflow
+            if (liquidityRemoved > currentLiquidity) {
+                liquidityRemoved = currentLiquidity;
+            }
+            if (liquidityRemoved > currentTotalLiquidity) {
+                liquidityRemoved = currentTotalLiquidity;
+            }
+            
             lpPositions[poolId][sender] -= liquidityRemoved;
             totalLiquidity[poolId] -= liquidityRemoved;
         }

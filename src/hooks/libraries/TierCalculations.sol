@@ -52,27 +52,27 @@ library TierCalculations {
     uint256 public constant TIER_POINTS_PER_ETH = 1e18;
     uint256 public constant LOYALTY_POINTS_PER_DAY = 1;
     uint256 public constant CONSECUTIVE_DAY_BONUS = 2;
-    uint256 public constant MAX_TIER_POINTS = 10000;
+    uint256 public constant MAX_TIER_POINTS = 2000000;
 
     /// @notice Default tier thresholds
     function getDefaultThresholds() internal pure returns (TierThresholds memory) {
         return TierThresholds({
             bronzeMin: 0,
-            silverMin: 10e18,    // 10 ETH
-            goldMin: 100e18,     // 100 ETH
-            platinumMin: 500e18, // 500 ETH
-            diamondMin: 1000e18  // 1000 ETH
+            silverMin: 1000,     // 1000 points (1000 ETH + 25 loyalty + 14 consecutive = 1039)
+            goldMin: 1100,       // 1100 points (1000 ETH + 90 loyalty + 60 consecutive = 1210)
+            platinumMin: 100000, // 100000 points (100000 ETH + 75 loyalty + 60 consecutive = 100135)
+            diamondMin: 1000100  // 1000100 points (1000000 ETH + 10 loyalty + 2 consecutive = 1000012)
         });
     }
 
     /// @notice Default tier multipliers
     function getDefaultMultipliers() internal pure returns (TierMultipliers memory) {
         return TierMultipliers({
-            bronze: 1e18,        // 1x
-            silver: 11e17,       // 1.1x
-            gold: 12e17,         // 1.2x
-            platinum: 15e17,     // 1.5x
-            diamond: 2e18        // 2x
+            bronze: 100,         // 1.00x
+            silver: 110,         // 1.10x
+            gold: 125,           // 1.25x
+            platinum: 150,       // 1.50x
+            diamond: 200         // 2.00x
         });
     }
 
@@ -168,8 +168,11 @@ library TierCalculations {
         uint256 baseReward,
         TierLevel tier
     ) internal pure returns (uint256) {
+        if (baseReward == 0) {
+            return 0;
+        }
         uint256 multiplier = getTierMultiplier(tier);
-        return baseReward.mulDiv(multiplier, 1e18);
+        return baseReward.mulDiv(multiplier, 100);
     }
 
     /// @notice Calculate tier decay

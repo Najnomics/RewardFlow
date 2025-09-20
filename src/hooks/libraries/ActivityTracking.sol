@@ -45,7 +45,7 @@ library ActivityTracking {
     function updateLiquidityProvision(
         UserActivity storage activity,
         BalanceDelta delta,
-        PoolKey calldata key
+        PoolKey memory key
     ) internal {
         uint256 liquidityAmount = _calculateLiquidityAmount(delta);
         PoolId poolId = key.toId();

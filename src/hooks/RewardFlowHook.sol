@@ -225,6 +225,17 @@ contract RewardFlowHook is BaseHook, ReentrancyGuard, Ownable {
         // Update LP liquidity tracking
         if (params.liquidityDelta < 0) {
             uint256 liquidityRemoved = uint256(-int256(params.liquidityDelta));
+            uint256 currentLiquidity = lpLiquidityPositions[poolId][sender];
+            uint256 currentTotalLiquidity = poolTotalLiquidity[poolId];
+            
+            // Ensure we don't underflow
+            if (liquidityRemoved > currentLiquidity) {
+                liquidityRemoved = currentLiquidity;
+            }
+            if (liquidityRemoved > currentTotalLiquidity) {
+                liquidityRemoved = currentTotalLiquidity;
+            }
+            
             lpLiquidityPositions[poolId][sender] -= liquidityRemoved;
             poolTotalLiquidity[poolId] -= liquidityRemoved;
         }
@@ -406,11 +417,14 @@ contract RewardFlowHook is BaseHook, ReentrancyGuard, Ownable {
 
     /// @notice Calculate swap volume
     function _calculateSwapVolume(BalanceDelta delta) internal pure returns (uint256) {
-        uint256 delta0 = uint256(int256(delta.amount0()));
-        uint256 delta1 = uint256(int256(delta.amount1()));
+        int256 delta0 = delta.amount0();
+        int256 delta1 = delta.amount1();
         
         // Use the absolute value of the larger delta
-        return delta0 > delta1 ? delta0 : delta1;
+        uint256 absDelta0 = delta0 < 0 ? uint256(-delta0) : uint256(delta0);
+        uint256 absDelta1 = delta1 < 0 ? uint256(-delta1) : uint256(delta1);
+        
+        return absDelta0 > absDelta1 ? absDelta0 : absDelta1;
     }
 
     /// @notice Distribute LP rewards proportionally (simplified)
